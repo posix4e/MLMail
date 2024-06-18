@@ -1,0 +1,6 @@
+.env
+__pycache__
+venv
+test.py 
+emails.txt
+split_email.txt
