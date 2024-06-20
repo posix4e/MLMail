@@ -1,48 +1,78 @@
-from openai import OpenAI
-import pandas as pd
-import numpy as np
 import os
+import psycopg2
+from openai import OpenAI
+from langchain.text_splitter import CharacterTextSplitter
 from dotenv import load_dotenv
 
-load_dotenv()
-
-# Initialize the OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+load_dotenv()  # This loads environment variables from the .env file
+client = OpenAI()
 
 
-def get_embedding(text, model="text-embedding-3-large"):
+def chunk_text(file_path, chunk_size=8000, chunk_overlap=200):
     """
-    Get embedding for a given text using the specified model.
+    Read and chunk the text from the file.
     """
-    text = text.replace("\n", " ")
-    response = client.embeddings.create(input=[text], model=model)
-    return response.data[0].embedding
+    with open(file_path, "r", encoding="utf-8") as file:
+        text = file.read()
+
+    text_splitter = CharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    )
+    return text_splitter.split_text(text)
 
 
-def create_embeddings_from_file(
-    input_file, output_file, model="text-embedding-3-large"
-):
+def generate_and_save_embeddings(chunks, db_config):
     """
-    Create embeddings for each line in the input text file and save to a CSV file.
+    Generate embeddings for each chunk of text and save to the database.
     """
-    # Read the input file
-    with open(input_file, "r", encoding="utf-8") as file:
-        lines = file.readlines()
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
 
-    # Create embeddings for each line
-    embeddings = []
-    for line in lines:
-        embedding = get_embedding(line.strip(), model=model)
-        embeddings.append(embedding)
+    # Create table if it doesn't exist
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS embeddings (
+            id SERIAL PRIMARY KEY,
+            text_chunk TEXT,
+            embedding vector(3072)  -- Adjust dimension if needed
+        );
+        """
+    )
 
-    # Create a DataFrame to store the embeddings
-    df = pd.DataFrame(embeddings)
+    model_name = os.getenv("OPENAI_MODEL", "text-embedding-3-large")
 
-    # Save the DataFrame to a CSV file
-    df.to_csv(output_file, index=False)
+    for chunk in chunks:
+        embedding = client.embeddings.create(
+            input=chunk, model=model_name, dimensions=3072
+        )
+
+        embedding_vector = embedding.data[0].embedding
+        cursor.execute(
+            "INSERT INTO embeddings (text_chunk, embedding) VALUES (%s, %s)",
+            (chunk, embedding_vector),
+        )
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 
-# Example usage
-input_file = "emails.txt"
-output_file = "embeddings.csv"
-create_embeddings_from_file(input_file, output_file)
+def process_and_store_embeddings(file_path, db_config):
+    """
+    Process the text file and store embeddings in the database.
+    """
+    chunks = chunk_text(file_path)
+    print(f"Number of chunks: {len(chunks)}")
+    generate_and_save_embeddings(chunks, db_config)
+
+
+if __name__ == "__main__":
+    db_config = {
+        "dbname": os.getenv("DB_NAME"),
+        "user": os.getenv("DB_USER"),
+        "password": os.getenv("DB_PASSWORD"),
+        "host": os.getenv("DB_HOST"),
+        "port": os.getenv("DB_PORT"),
+    }
+    file_path = "emails.txt"
+    process_and_store_embeddings(file_path, db_config)
