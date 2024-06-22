@@ -39,7 +39,7 @@ def generate_and_save_embeddings(chunks, db_config):
         """
     )
 
-    model_name = os.getenv("OPENAI_MODEL", "text-embedding-3-large")
+    model_name = os.getenv("OPENAI_EMBEDDINGS_MODEL", "text-embedding-3-large")
 
     for chunk in chunks:
         embedding = client.embeddings.create(
@@ -64,15 +64,3 @@ def process_and_store_embeddings(file_path, db_config):
     chunks = chunk_text(file_path)
     print(f"Number of chunks: {len(chunks)}")
     generate_and_save_embeddings(chunks, db_config)
-
-
-if __name__ == "__main__":
-    db_config = {
-        "dbname": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "host": os.getenv("DB_HOST"),
-        "port": os.getenv("DB_PORT"),
-    }
-    file_path = "emails.txt"
-    process_and_store_embeddings(file_path, db_config)

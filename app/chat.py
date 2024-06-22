@@ -12,7 +12,7 @@ def get_query_embedding(query, model=None):
     Generate embedding for the user query.
     """
     if model is None:
-        model = os.getenv("OPENAI_MODEL", "text-embedding-3-large")
+        model = os.getenv("OPENAI_EMBEDDINGS_MODEL", "text-embedding-3-large")
     response = client.embeddings.create(input=query, model=model, dimensions=3072)
     print(
         "Query Embedding:", len(response.data[0].embedding)
@@ -90,16 +90,5 @@ def answer_query_in_chat(query, db_config):
         {"role": "assistant", "content": context_chunk},
     ]
     response = generate_chat_response(messages)
-    print("Final Response:", response)  # Print the final response to the user
-
-
-if __name__ == "__main__":
-    db_config = {
-        "dbname": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "host": os.getenv("DB_HOST"),
-        "port": os.getenv("DB_PORT"),
-    }
-    user_query = "Summarize these mails"
-    answer_query_in_chat(user_query, db_config)
+    print("Final Response:", response)
+    return response

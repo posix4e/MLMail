@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat with Assistant</title>
+  </head>
+  <body>
+    <h1>Chat with Email Assistant</h1>
+    <form id="chatForm">
+      <input
+        type="text"
+        id="query"
+        name="query"
+        placeholder="Type your query here..."
+      />
+      <button type="button" onclick="sendQuery()">Send</button>
+    </form>
+    <div id="response"></div>
+
+    <script>
+      function sendQuery() {
+        var formData = new FormData(document.getElementById("chatForm"));
+        fetch("/chat", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById("response").innerText = "Response: " + data;
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+    </script>
+  </body>
+</html>

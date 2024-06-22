@@ -3,3 +3,5 @@ python-dotenv
 openai
 langchain
 beautifulsoup4
+flask
+apscheduler
